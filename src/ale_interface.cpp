@@ -367,6 +367,10 @@ const ALERAM& ALEInterface::getRAM() {
   return environment->getRAM();
 }
 
+void ALEInterface::processBackRAM() {
+  return environment->processBackRAM();
+}
+
 // Saves the state of the system
 void ALEInterface::saveState() {
   environment->save();

@@ -146,6 +146,8 @@ public:
   // Returns the current RAM content
   const ALERAM &getRAM();
 
+  void processBackRAM();
+
   // Saves the state of the system
   void saveState();
 
