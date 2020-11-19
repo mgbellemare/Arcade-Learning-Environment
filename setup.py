@@ -1,196 +1,121 @@
-import distutils.dir_util
 import os
 import sys
-import platform
-import multiprocessing
 import shlex
-import re
+import subprocess
 
-from distutils.command.clean import clean as _clean
-from setuptools import setup, Extension, Distribution as _distribution
-from setuptools.command.build_ext import _build_ext
-from shutil import rmtree
+from setuptools import setup, Extension, Distribution
+from setuptools.command.build_ext import build_ext
 
-system = platform.system()
 here = os.path.abspath(os.path.dirname(__file__))
 
 
-class Distribution(_distribution):
-    global_options = _distribution.global_options
-
-    global_options += [("cmake-options=", None, "Additional semicolon-separated cmake setup options list")]
-
-    if system == "Windows":
-        global_options += [("vcpkg-root=", None, "Path to vcpkg root. For Windows only")]
+class CMakeDistribution(Distribution):
+    global_options = Distribution.global_options
+    global_options += [("cmake-options=", None, "Additional semicolon-separated cmake options.")]
 
     def __init__(self, attrs=None):
-        self.vcpkg_root = None
         self.cmake_options = None
         super().__init__(attrs)
 
 
 class CMakeExtension(Extension):
-    def __init__(self, name):
+    def __init__(self, name, sourcedir=""):
         Extension.__init__(self, name, sources=[])
+        self.sourcedir = os.path.abspath(sourcedir)
 
 
-class BuildALEPythonInterface(_build_ext):
-    def run(self):
-        for ext in self.extensions:
-            self.build_extension(ext)
-
-        super().run()
+class CMakeBuild(build_ext):
+    PLAT_TO_CMAKE = {
+        "win32": "Win32",
+        "win-amd64": "x64",
+        "win-arm32": "ARM",
+        "win-arm64": "ARM64",
+    }
 
     def build_extension(self, ext):
-        distutils.dir_util.mkpath(self.build_temp)
+        extdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
 
-        libdir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        distutils.dir_util.mkpath(libdir)
+        # required for rpath detection of libraries
+        if not extdir.endswith(os.path.sep):
+            extdir += os.path.sep
 
         config = "Debug" if self.debug else "Release"
-
         cmake_args = [
-            "-DCMAKE_BUILD_TYPE={}".format(config),
-            "-DUSE_SDL=OFF",
+            f"-DCMAKE_BUILD_TYPE={config}",
+            "-DSDL_SUPPORT=ON",
+            "-DSDL_DYNLOAD=ON",
             "-DBUILD_CPP_LIB=OFF",
-            "-DBUILD_PYTHON=ON",
-            "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{}={}".format(config.upper(), libdir),
-            "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_{}={}".format(config.upper(), libdir),
-            "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY_{}={}".format(config.upper(), libdir),
-            "-DPYTHON_EXECUTABLE={}".format(sys.executable),
+            "-DBUILD_PYTHON_LIB=ON",
+            f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY_{config.upper()}={extdir}",
+            f"-DPython3_EXECUTABLE={sys.executable}",
         ]
-        build_args = [
-            "--config",
-            config,
-            "--parallel",
-            str(multiprocessing.cpu_count()),
-        ]
+        build_args = []
+
+        if self.compiler.compiler_type != "msvc":
+            # Using Ninja-build since it a) is available as a wheel and b)
+            # multithreads automatically. MSVC would require all variables be
+            # exported for Ninja to pick it up, which is a little tricky to do.
+            # Users can override the generator with CMAKE_GENERATOR in CMake
+            # 3.15+.
+            cmake_args += ["-GNinja"]
+        else:
+            cmake_args += ["-A", self.PLAT_TO_CMAKE[self.plat_name]]
+            build_args += ["--config", config]
 
         if self.distribution.cmake_options is not None:
-            cmake_args += shlex.split(self.distribution.cmake_args)
-        cmake_args += shlex.split(os.environ.get("ALE_PY_CMAKE_ARGS", ""))
+            cmake_args += shlex.split(self.distribution.cmake_options)
 
-        if system == "Windows":
-            platform = "x64" if sys.maxsize > 2 ** 32 else "Win32"
-            cmake_args += ["-A", platform]
+        # Set CMAKE_BUILD_PARALLEL_LEVEL to control the parallel build level
+        # across all generators.
+        if "CMAKE_BUILD_PARALLEL_LEVEL" not in os.environ:
+            # self.parallel is a Python 3 only way to set parallel jobs by hand
+            # using -j in the build_ext call, not supported by pip or PyPA-build.
+            if hasattr(self, "parallel") and self.parallel:
+                build_args += [f"-j{self.parallel}"]
 
-            if self.distribution.vcpkg_root is not None:
-                abs_vcpkg_path = os.path.abspath(self.distribution.vcpkg_root)
-                vcpkg_toolchain = os.path.join(
-                    abs_vcpkg_path, "scripts", "buildsystems", "vcpkg.cmake"
-                )
-                cmake_args += ["-DCMAKE_TOOLCHAIN_FILE=" + vcpkg_toolchain]
+        if not os.path.exists(self.build_temp):
+            os.makedirs(self.build_temp)
 
         os.chdir(self.build_temp)
-        self.spawn(["cmake", here] + cmake_args)
+        self.spawn(["cmake", ext.sourcedir] + cmake_args)
         if not self.dry_run:
             self.spawn(["cmake", "--build", "."] + build_args)
         os.chdir(here)
 
 
-class Clean(_clean):
-    """Hook to clean up after building the Python package."""
-
-    def run(self):
-        rmtree(os.path.join(here, "dist"), ignore_errors=True)
-        rmtree(os.path.join(here, "build"), ignore_errors=True)
-        rmtree(os.path.join(here, "ale_py.egg-info"), ignore_errors=True)
-        super().run()
-
-
-def _read(filename):
-    """Reads an entire file into a string."""
-    with open(os.path.join(os.path.dirname(__file__), filename)) as f:
-        return f.read()
-
-
-def _is_valid_semver(version):
-    """Checks if `version` conforms to semver rules."""
-    regex = r"^((([0-9]+)\.([0-9]+)\.([0-9]+)(?:-([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?)$"
-    return re.match(regex, version)
-
-
-def _parse_version(filename):
+def parse_version(version_file):
     """
-    Parse VERSION from `CMakeLists.txt`
+    Parse version from `version_file`.
 
-    args:
-        filename: should point to the projects CMakeLists.txt
-    returns:
-        version:
-            1) Running locally version will be of the form VERSION.dev
-            2) Running in CI with a version tag will be of the form TAGGED_VERSION
-    raises:
-        RuntimeError:
-            1) Unable to find ALEVERSION in `filename`
-        AssertionError:
-            1) Running in CI and tagged version doesn't match parsed version
-            2) Tagged version or parsed version doesn't conform to semver rules
+    If `ALE_BUILD_VERSION` is specified this version overrides that in
+    `version_file`. 
+
+    If `ALE_BUILD_VERSION` is not specified the git sha will be appended
+    to the version identifier.
+
+    raises AssertionError: If `ALE_BUILD_VERSION` doesn't start with the version
+        specified in `version_file`
     """
-    # Parse version from file
-    contents = _read(filename)
-    version_match = re.search(r"ale.*VERSION\s(\d+[^\n]*)", contents, re.M | re.S)
-    if not version_match:
-        raise RuntimeError("Unable to find VERSION in {}".format(filename))
+    version = open(version_file).read().strip()
 
-    version = version_match.group(1)
-    version_suffix = ".dev0"
-    assert _is_valid_semver(version), "ALEVERSION {} must conform to semver.".format(
-        version
+    if os.getenv('ALE_BUILD_VERSION'):
+        assert os.getenv('ALE_BUILD_VERSION').startswith(version)
+        version = os.getenv('ALE_BUILD_VERSION')
+    else:
+        sha = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], cwd=here).decode('ascii').strip()
+        version += f"+{sha}"
+
+    return version
+
+
+if __name__ == '__main__':
+    # Allow for running `pip wheel` from other directories
+    here and os.chdir(here)
+    # Most config options are in `setup.cfg`. These are the
+    # only dynamic options we need at build time.
+    setup(
+        version=parse_version('version.txt'),
+        distclass=CMakeDistribution,
+        ext_modules=[CMakeExtension("ale_py._ale_py")],
+        cmdclass={"build_ext": CMakeBuild}
     )
-
-    # If the git ref is a tag verify the tag and don't use a suffix
-    ref = "GITHUB_REF"
-    tag_regex = r"refs\/tags\/v(.*)$"
-    if os.environ.get(ref, False) and re.match(tag_regex, os.environ.get(ref)):
-        version_match = re.search(tag_regex, os.environ.get(ref))
-        version_tag = version_match.group(1)
-        assert _is_valid_semver(
-            version_tag
-        ), "Tag is invalid semver. {} must conform to semver.".format(version_tag)
-        assert (
-            version_tag == version
-        ), "Tagged version must match VERSION but got:\n\tVERSION: {}\n\tTAG: {}".format(
-            version, tagged_version
-        )
-        version_suffix = ""
-
-    return version + version_suffix
-
-
-setup(
-    name="ale-py",
-    version=_parse_version("CMakeLists.txt"),
-    description="The Arcade Learning Environment (ALE) - a platform for AI research.",
-    long_description=_read("README.md"),
-    long_description_content_type="text/markdown",
-    keywords=["reinforcement-learning", "arcade-learning-environment", "atari"],
-    url="https://github.com/mgbellemare/Arcade-Learning-Environment",
-    author="Arcade Learning Environment Authors",
-    license="GPLv2",
-    python_requires=">=3.5",
-    classifiers=[
-        # Development Status
-        "Development Status :: 5 - Production/Stable",
-        # Audience
-        "Intended Audience :: Science/Research",
-        # License
-        "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
-        # Language Support
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        # Topics
-        "Topic :: Scientific/Engineering",
-        "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    ],
-    zip_safe=False,
-    include_package_data=True,
-    distclass=Distribution,
-    ext_modules=[CMakeExtension("ale-py")],
-    cmdclass={"build_ext": BuildALEPythonInterface, "clean": Clean},
-    install_requires=["numpy"],
-    test_requires=["pytest"],
-)

@@ -158,6 +158,12 @@ class Console
     std::string getFormat() const { return myDisplayFormat; }
 
     /**
+      Returns the framerate based on a number of factors
+      (whether 'framerate' is set, what display format is in use, etc)
+    */
+    uInt32 getFrameRate() const;
+
+    /**
       Toggle between the available palettes.
     */
     void togglePalette();
@@ -218,12 +224,6 @@ class Console
 
   private:
     void toggleTIABit(TIA::TIABit bit, const std::string& bitname, bool show = true) const;
-
-    /**
-      Returns the framerate based on a number of factors
-      (whether 'framerate' is set, what display format is in use, etc)
-    */
-    uInt32 getFrameRate() const;
 
   private:
     // Pointer to the osystem object

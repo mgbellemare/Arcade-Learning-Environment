@@ -1,4 +1,4 @@
-name: Release ale-py
+name: Release ALE Python
 
 on:
   release:
@@ -6,20 +6,20 @@ on:
 
 jobs:
   release:
-    name: Release ale-py
+    name: Release ALE Python
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - uses: ./.github/actions/download-release-asset
-      name: Download ale-py release asset
+      name: Download ALE Python release asset
       with:
         filename: ale-py.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: Unzip ale-py asset
+    - name: Unzip ALE Python asset
       run: |
         unzip ale-py.zip -d dist
-    - name: Publish to PyPi
+    - name: Publish ALE Python to PyPi
       uses: pypa/gh-action-pypi-publish@master
       with:
         user: __token__

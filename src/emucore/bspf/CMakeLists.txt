@@ -1,4 +1,1 @@
-target_sources(ale
-  PRIVATE
-    bspf.hxx
-)
+target_sources(${PROJECT_NAME} PRIVATE bspf.hxx)

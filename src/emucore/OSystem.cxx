@@ -38,7 +38,11 @@ using namespace std;
 #include "emucore/PropsSet.hxx"
 #include "emucore/Event.hxx"
 #include "emucore/OSystem.hxx"
-#include "common/SoundSDL.hxx"
+
+#ifdef SDL_SUPPORT
+  #include "common/ScreenSDL.hpp"
+  #include "common/SoundSDL.hxx"
+#endif
 
 #define MAX_ROM_SIZE  512 * 1024
 
@@ -52,19 +56,19 @@ OSystem::OSystem()
   : 
     myEvent(NULL),
     mySound(NULL),
+    myScreen(NULL),
     mySettings(NULL),
     myPropSet(NULL),
     myConsole(NULL),
     myQuitLoop(false),
     mySkipEmulation(false),
     myRomFile(""),
-    myFeatures(""),
-    p_display_screen(NULL)
+    myFeatures("")
 {
     #ifdef DISPLAY_OPENGL
       myFeatures += "OpenGL ";
     #endif
-    #ifdef SOUND_SUPPORT
+    #ifdef SDL_SUPPORT
       myFeatures += "Sound ";
     #endif
     #ifdef JOYSTICK_SUPPORT
@@ -105,8 +109,8 @@ OSystem::~OSystem()
     delete myPropSet;
   if (myEvent != NULL)
     delete myEvent; 
-  if (p_display_screen != NULL) {
-      delete p_display_screen;
+  if (myScreen != NULL) {
+      delete myScreen;
   }
 }
 
@@ -339,7 +343,7 @@ void OSystem::createSound()
   }
   mySound = NULL;
 
-#ifdef SOUND_SUPPORT
+#ifdef SDL_SUPPORT
   // If requested (& supported), enable sound
   if (mySettings->getBool("sound") == true) {
       mySound = new SoundSDL(this);
@@ -431,16 +435,16 @@ bool OSystem::createConsole(const string& romfile)
   // Free the image since we don't need it any longer
   delete[] image;
 
+  myScreen = new Screen(this);
+
   if (mySettings->getBool("display_screen", true)) {
-#ifndef __USE_SDL
-    ale::Logger::Error << "Screen display requires directive __USE_SDL to be defined."
-                            << " Please recompile with flag '-D__USE_SDL'."
-                            << " See makefile for more information."
-                            << std::endl;
-    exit(1);
+#ifdef SDL_SUPPORT
+    myScreen = new ale::ScreenSDL(this);
+#else
+    ale::Logger::Info << "Setting `display_screen` is enabled "
+                      << "but SDL_SUPPORT is disabled. To display the "
+                      << "screen SDL_SUPPORT must be enabled." << endl;
 #endif
-    p_display_screen = new ale::DisplayScreen(&myConsole->mediaSource(),
-                                              mySound, m_colour_palette); 
   }
 
   return retval;
@@ -468,9 +472,10 @@ void OSystem::deleteConsole()
     delete myConsole;  
     myConsole = NULL;
   }
-  if (p_display_screen) {       //ALE
-    delete p_display_screen;    //ALE
-    p_display_screen = NULL;    //ALE 
+
+  if (myScreen) {
+    delete myScreen;
+    myScreen = NULL;
   }
 }
 

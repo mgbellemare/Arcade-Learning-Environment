@@ -1,0 +1,9 @@
+line_width: 80
+tab_size: 2
+enable_sort: True
+dangle_parens: False
+dangle_align: 'prefix'
+command_case: 'canonical'
+keyword_case: 'upper'
+line_ending: 'auto'
+literal_comment_pattern: '.*'
