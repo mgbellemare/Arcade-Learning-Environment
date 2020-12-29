@@ -1,4 +1,4 @@
-name: Build ale
+name: Build ALE
 
 on:
   push:
@@ -11,51 +11,59 @@ on:
       - "*"
 
 jobs:
+  presubmit:
+    name: Presubmit checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - run: ./scripts/presubmit.sh
+
   build:
-    name: Build ale on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build ALE on ${{ matrix.config.os }}
+    runs-on: ${{ matrix.config.os }}
+    needs: presubmit
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        config: [
+          {"os": "ubuntu-latest", "deps": ["zlib", "sdl2"], "triplet": "x64-linux-mixed"},
+          {"os": "windows-latest", "deps": ["zlib", "sdl2"], "triplet": "x64-windows"},
+          {"os": "macos-latest", "deps": ["zlib", "sdl2"], "triplet": "x64-osx-mixed"}
+        ]
+    env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.config.triplet }}
     steps:
     - uses: actions/checkout@v2
-    - name: Presubmit check
-      run: ./scripts/presubmit.sh
-    - uses: actions/setup-python@v1
-      name: Install Python ${{ matrix.python_version }}
+
+    - uses: actions/setup-python@v2
       with:
         python-version: "3.9"
-    - name: Install Python dependencies
+
+    - name: Install dependencies
       run: |
         python -m pip install numpy pytest cmake
-    - name: Install dependencies on Ubuntu
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update
-        sudo apt-get install libsdl1.2-dev
-    - name: Install dependencies on macOS
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew install sdl
-    - name: Install dependencies on Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        vcpkg install zlib:x64-windows sdl1:x64-windows
-    - name: Configure ale with vcpkg
-      if: matrix.os == 'windows-latest'
+        git -C "$VCPKG_INSTALLATION_ROOT" fetch
+        git -C "$VCPKG_INSTALLATION_ROOT" reset --hard origin/master
+        vcpkg install ${{ join(matrix.config.deps, ' ') }} --triplet ${{ matrix.config.triplet }} --overlay-triplets cmake/custom-triplets
+
+    - name: Cache dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
+        key: ${{ matrix.config.os }}--vcpkg--${{ hashFiles(format('{0}/.git', env.VCPKG_INSTALLATION_ROOT)) }}
+
+    - name: Configure ALE
       run: |
         mkdir build; cd build
-        cmake ../ `
-          -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
-          -DVCPKG_TARGET_TRIPLET="x64-windows" `
-          -DUSE_SDL=ON
-    - name: Configure ale
-      if: matrix.os != 'windows-latest'
-      run: |
-        mkdir build; cd build
-        cmake ../ -DUSE_SDL=ON -DPython3_FIND_FRAMEWORK=NEVER
-    - name: Build & Test ale
-      run: |
-        cd build
-        cmake --build . --config Debug
-        ctest -C Debug --progress -VV
+        cmake ../ -DSDL_SUPPORT=ON -DPython3_FIND_FRAMEWORK=NEVER
+
+    - name: Build ALE
+      working-directory: ./build
+      run: cmake --build . --config Debug --parallel 2
+
+    - name: Test ALE
+      working-directory: ./build
+      run: ctest -C Debug --progress -VV

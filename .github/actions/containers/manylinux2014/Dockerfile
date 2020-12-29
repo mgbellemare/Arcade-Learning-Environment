@@ -1,0 +1,13 @@
+FROM quay.io/pypa/manylinux2014_x86_64
+
+LABEL org.opencontainers.image.source https://github.com/jessefarebro/Arcade-Learning-Environment
+
+RUN git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg
+
+ENV VCPKG_INSTALLATION_ROOT="/opt/vcpkg"
+ENV PATH="${PATH}:/opt/vcpkg"
+
+RUN bootstrap-vcpkg.sh && \
+    vcpkg integrate install && \
+    vcpkg integrate bash
+

@@ -32,13 +32,13 @@ class VideoDialog;
 //ALE  #include "EventHandler.hxx"
 //ALE  #include "FrameBuffer.hxx"
 #include "emucore/Sound.hxx"
+#include "emucore/Screen.hxx"
 #include "common/SoundNull.hxx"
 #include "emucore/Settings.hxx"
 #include "emucore/Console.hxx"
 #include "emucore/Event.hxx"  //ALE 
 //ALE  #include "Font.hxx"
 #include "emucore/bspf/bspf.hxx"
-#include "common/display_screen.h"
 #include "common/ColourPalette.hpp"
 #include "common/Log.hpp"
 
@@ -113,6 +113,13 @@ class OSystem
       @return The sound object
     */
     inline Sound& sound() const { return *mySound; }
+
+    /**
+      Get the sound object of the system
+
+      @return The sound object
+    */
+    inline Screen& screen() const { return *myScreen; }
 
     /**
       Get the settings object of the system
@@ -447,6 +454,9 @@ class OSystem
     // Pointer to the Sound object
     Sound* mySound;
 
+    // Pointer to the Screen object
+    Screen* myScreen;
+
     // Pointer to the Settings object
     Settings* mySettings;
 
@@ -534,9 +544,6 @@ class OSystem
 
     // Table of RGB values for GUI elements
     //ALE  static uInt32 ourGUIColors[kNumUIPalettes][kNumColors-256];
-  public:
-    ale::DisplayScreen* p_display_screen; //MHAUSKN
-
   private:
 
     ale::ColourPalette m_colour_palette;

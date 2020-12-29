@@ -19,17 +19,16 @@
 #ifndef SOUND_SDL_HXX
 #define SOUND_SDL_HXX
 
-#ifdef SOUND_SUPPORT
+#ifdef SDL_SUPPORT
 
 class OSystem;
-
-#include "SDL.h"
 
 #include "emucore/Sound.hxx"
 #include "emucore/bspf/bspf.hxx"
 #include "emucore/MediaSrc.hxx"
 #include "emucore/TIASnd.hxx"
 
+#include "common/SDL2.hpp"
 // If desired, we save sound to disk
 #include "common/SoundExporter.hpp"
 #include <memory>
@@ -289,8 +288,8 @@ class SoundSDL : public Sound
     // Keeps track of how many samples we still need to record
     int myNumRecordSamplesNeeded; 
 
-    std::auto_ptr<ale::sound::SoundExporter> mySoundExporter; 
+    std::unique_ptr<ale::sound::SoundExporter> mySoundExporter;
 };
 
-#endif  // SOUND_SUPPORT
+#endif  // SDL_SUPPORT
 #endif

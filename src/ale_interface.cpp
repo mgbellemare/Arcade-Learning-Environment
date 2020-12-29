@@ -56,9 +56,9 @@ namespace ale {
 // Display ALE welcome message
 std::string ALEInterface::welcomeMessage() {
   std::ostringstream oss;
-  oss << "A.L.E: Arcade Learning Environment (version " << ALE_VERSION_STR << ")\n"
-      << "[Powered by Stella]\n"
-      << "Use -help for help screen.";
+  oss << "A.L.E: Arcade Learning Environment "
+      << "(version " << ALE_VERSION << "+" << ALE_VERSION_GIT_SHA ")\n"
+      << "[Powered by Stella]";
   return oss.str();
 }
 
@@ -180,23 +180,9 @@ void ALEInterface::loadROM(std::string rom_file) {
   environment.reset(new StellaEnvironment(theOSystem.get(), romSettings.get()));
   max_num_frames = theOSystem->settings().getInt("max_num_frames_per_episode");
   environment->reset();
-
-#ifndef __USE_SDL
-  if (theOSystem->p_display_screen != NULL) {
-    Logger::Error
-        << "Screen display requires directive __USE_SDL to be defined."
-        << std::endl;
-    Logger::Error << "Please recompile this code with flag '-D__USE_SDL'."
-                  << std::endl;
-    Logger::Error << "Also ensure ALE has been compiled with USE_SDL active "
-                     "(see ALE makefile)."
-                  << std::endl;
-    std::exit(1);
-  }
-#endif
 }
 
-bool ALEInterface::isSupportedRom(const std::string& rom_file){
+std::optional<std::string> ALEInterface::isSupportedROM(const std::string& rom_file) {
   std::ifstream fsnode(rom_file);
   // TODO C++17: Use FS
   if (!fsnode.good()) {
@@ -210,7 +196,10 @@ bool ALEInterface::isSupportedRom(const std::string& rom_file){
   std::string md5 = MD5(rom.data(), rom.size());
   RomSettings* wrapper = buildRomRLWrapper(rom_file, md5);
 
-  return wrapper != NULL && wrapper->md5() == md5;
+  if (wrapper != NULL && wrapper->md5() == md5) {
+    return wrapper->rom();
+  }
+  return std::nullopt;
 }
 
 // Get the value of a setting.
@@ -280,16 +269,7 @@ int ALEInterface::lives() {
 // when necessary - this method will keep pressing buttons on the
 // game over screen.
 reward_t ALEInterface::act(Action action) {
-  reward_t reward = environment->act(action, PLAYER_B_NOOP);
-  if (theOSystem->p_display_screen != NULL) {
-    theOSystem->p_display_screen->display_screen();
-    while (theOSystem->p_display_screen->manual_control_engaged()) {
-      Action user_action = theOSystem->p_display_screen->getUserAction();
-      reward += environment->act(user_action, PLAYER_B_NOOP);
-      theOSystem->p_display_screen->display_screen();
-    }
-  }
-  return reward;
+  return environment->act(action, PLAYER_B_NOOP);
 }
 
 // Returns the vector of modes available for the current game.

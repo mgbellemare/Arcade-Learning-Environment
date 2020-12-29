@@ -58,12 +58,11 @@ class ALEPythonInterface : public ALEInterface {
 
 } // namespace ale
 
-PYBIND11_MODULE(ale_py, m) {
-  m.attr("__version__") = py::str(ALE_VERSION_STR);
-#ifdef __USE_SDL
-  m.attr("SDL") = py::bool_(true);
+PYBIND11_MODULE(_ale_py, m) {
+#ifdef SDL_SUPPORT
+  m.attr("SDL_SUPPORT") = py::bool_(true);
 #else
-  m.attr("SDL") = py::bool_(false);
+  m.attr("SDL_SUPPORT") = py::bool_(false);
 #endif
 
   py::enum_<ale::Action>(m, "Action")
@@ -127,7 +126,7 @@ PYBIND11_MODULE(ale_py, m) {
       .def("setBool", &ale::ALEPythonInterface::setBool)
       .def("setFloat", &ale::ALEPythonInterface::setFloat)
       .def("loadROM", &ale::ALEPythonInterface::loadROM)
-      .def_static("isSupportedRom", &ale::ALEPythonInterface::isSupportedRom)
+      .def_static("isSupportedROM", &ale::ALEPythonInterface::isSupportedROM)
       .def("act", (ale::reward_t(ale::ALEPythonInterface::*)(uint32_t)) &
                       ale::ALEPythonInterface::act)
       .def("act", (ale::reward_t(ale::ALEInterface::*)(ale::Action)) &

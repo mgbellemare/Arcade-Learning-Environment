@@ -41,13 +41,13 @@
 #include "os_dependent/OSystemUNIX.hxx"
 #endif
 #include "games/Roms.hpp"
-#include "common/display_screen.h"
 #include "environment/stella_environment.hpp"
 #include "common/ScreenExporter.hpp"
 #include "common/Log.hpp"
 #include "version.hpp"
 
 #include <string>
+#include <optional>
 #include <memory>
 
 namespace ale {
@@ -205,7 +205,9 @@ class ALEInterface {
 
  public:
   // Check if the rom with filename matches a supported MD5
-  static bool isSupportedRom(const std::string& rom_file);
+  // Returns either ROM name if found or false otherwise.
+  static std::optional<std::string> isSupportedROM(const std::string& rom_file);
+
   // Display ALE welcome message
   static std::string welcomeMessage();
   static void disableBufferedIO();
