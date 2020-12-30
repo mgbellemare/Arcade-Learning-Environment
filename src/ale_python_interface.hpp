@@ -127,7 +127,7 @@ PYBIND11_MODULE(ale_py, m) {
       .def("setBool", &ale::ALEPythonInterface::setBool)
       .def("setFloat", &ale::ALEPythonInterface::setFloat)
       .def("loadROM", &ale::ALEPythonInterface::loadROM)
-      .def_static("isSupportedRom", &ale::ALEPythonInterface::isSupportedRom)
+      .def_static("isSupportedROM", &ale::ALEPythonInterface::isSupportedROM)
       .def("act", (ale::reward_t(ale::ALEPythonInterface::*)(uint32_t)) &
                       ale::ALEPythonInterface::act)
       .def("act", (ale::reward_t(ale::ALEInterface::*)(ale::Action)) &
