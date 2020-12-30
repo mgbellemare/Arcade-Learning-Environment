@@ -1,3 +1,5 @@
+import sys
+
 # TODO Py38: Once 3.7 is deprecated use importlib.metadata to parse
 # version string from package.
 try:
@@ -11,6 +13,10 @@ except importlib_metadata.PackageNotFoundError:
 
 # Import native shared library
 from ._ale_py import *
+
+# Gym registration
+if "gym" in sys.modules:
+    from . import gym
 
 # Exported symbols
 __all__ = ["ALEInterface", "ALEState", "Action", "LoggerMode", "__version__"]
