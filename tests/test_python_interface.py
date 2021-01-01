@@ -3,11 +3,11 @@ import os
 import pickle
 import tempfile
 import numpy as np
-import ale_py
 
-
-def test_ale_version():
-    assert hasattr(ale_py, "__version__")
+try:
+    import _ale_py as ale_py
+except ImportError:
+    import ale_py
 
 
 def test_ale_construction(ale):
@@ -193,10 +193,11 @@ def test_save_screen_png(tetris):
     os.remove(file)
 
 
-def test_is_rom_supported(ale, test_rom_path):
-    assert ale.isSupportedRom(test_rom_path)
+def test_is_rom_supported(ale, test_rom_path, random_rom_path):
+    assert ale.isSupportedROM(test_rom_path)
+    assert ale.isSupportedROM(random_rom_path) is None
     with pytest.raises(RuntimeError) as exc_info:
-        ale.isSupportedRom("notfound")
+        ale.isSupportedROM("notfound")
 
 def test_save_load_state(tetris):
     state = tetris.cloneState()

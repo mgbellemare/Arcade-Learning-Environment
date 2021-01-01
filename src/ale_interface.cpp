@@ -196,7 +196,7 @@ void ALEInterface::loadROM(std::string rom_file) {
 #endif
 }
 
-bool ALEInterface::isSupportedRom(const std::string& rom_file){
+std::optional<std::string> ALEInterface::isSupportedROM(const std::string& rom_file){
   std::ifstream fsnode(rom_file);
   // TODO C++17: Use FS
   if (!fsnode.good()) {
@@ -210,7 +210,10 @@ bool ALEInterface::isSupportedRom(const std::string& rom_file){
   std::string md5 = MD5(rom.data(), rom.size());
   RomSettings* wrapper = buildRomRLWrapper(rom_file, md5);
 
-  return wrapper != NULL && wrapper->md5() == md5;
+  if (wrapper != NULL && wrapper->md5() == md5) {
+    return wrapper->rom();
+  }
+  return std::nullopt;
 }
 
 // Get the value of a setting.

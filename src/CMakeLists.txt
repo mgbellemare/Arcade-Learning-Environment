@@ -6,7 +6,7 @@ option(USE_SDL "Build with SDL support" OFF)
 include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 
 # Project specific target properties
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED TRUE)
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
@@ -69,7 +69,7 @@ if (BUILD_PYTHON_LIB)
   add_library(ale-py MODULE ale_interface.cpp ale_python_interface.cpp)
   target_link_libraries(ale-py PUBLIC ale)
   target_link_libraries(ale-py PRIVATE pybind11::module)
-  set_target_properties(ale-py PROPERTIES OUTPUT_NAME ale_py
+  set_target_properties(ale-py PROPERTIES OUTPUT_NAME _ale_py
                                           PREFIX "${PYTHON_MODULE_PREFIX}"
                                           SUFFIX "${PYTHON_MODULE_EXTENSION}")
 endif()

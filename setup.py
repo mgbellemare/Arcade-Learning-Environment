@@ -114,6 +114,6 @@ if __name__ == '__main__':
     setup(
         version=parse_version('version.txt'),
         distclass=CMakeDistribution,
-        ext_modules=[CMakeExtension("ale_py")],
+        ext_modules=[CMakeExtension("ale_py._ale_py")],
         cmdclass={"build_ext": CMakeBuild}
     )

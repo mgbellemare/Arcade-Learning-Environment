@@ -1,11 +1,19 @@
 import pytest
 
-import ale_py
+try:
+    import _ale_py as ale_py
+except ImportError:
+    import ale_py
 
 
 @pytest.fixture
 def test_rom_path(resources):
     yield resources["tetris.bin"]
+
+
+@pytest.fixture
+def random_rom_path(resources):
+    yield resources["random.bin"]
 
 
 @pytest.fixture

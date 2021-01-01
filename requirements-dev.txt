@@ -1,2 +1,5 @@
 numpy
+setuptools
+importlib-metadata; python_version < "3.7"
+importlib-resources; python_version < "3.7"
 pytest
