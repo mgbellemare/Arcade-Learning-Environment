@@ -198,17 +198,6 @@ def test_is_rom_supported(ale, test_rom_path):
     with pytest.raises(RuntimeError) as exc_info:
         ale.isSupportedRom("notfound")
 
-def test_save_load_state(tetris):
-    state = tetris.cloneState()
-    tetris.saveState()
-
-    for _ in range(10):
-        tetris.act(0)
-
-    assert tetris.cloneState() != state
-    tetris.loadState()
-    assert tetris.cloneState() == state
-
 
 def test_clone_restore_state(tetris):
     state = tetris.cloneState()
@@ -219,17 +208,6 @@ def test_clone_restore_state(tetris):
     assert tetris.cloneState() != state
     tetris.restoreState(state)
     assert tetris.cloneState() == state
-
-
-def test_clone_restore_system_state(tetris):
-    state = tetris.cloneSystemState()
-
-    for _ in range(10):
-        tetris.act(0)
-
-    assert tetris.cloneSystemState() != state
-    tetris.restoreSystemState(state)
-    assert tetris.cloneSystemState() == state
 
 
 def test_state_pickle(tetris):
