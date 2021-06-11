@@ -34,6 +34,9 @@ System::System()
     myCycles(0),
     myDataBusState(0)
 {
+  // Seed RNG with fixed seed to enable full determinism
+  myRandom.seed(0);
+
   // Allocate page table
   myPageAccessTable = new PageAccess[myNumberOfPages];
 
@@ -122,6 +125,7 @@ bool System::save(Serializer& out)
   {
     out.putString("System");
     out.putInt(myCycles);
+    myRandom.saveState(out);
   }
   catch(char *msg)
   {
@@ -146,6 +150,7 @@ bool System::load(Deserializer& in)
       return false;
 
     myCycles = (uint32_t) in.getInt();
+    myRandom.loadState(in);
   }
   catch(char *msg)
   {
