@@ -112,6 +112,8 @@ class StellaEnvironment {
   /** Returns a wrapper providing #include-free access to our methods. */
   std::unique_ptr<StellaEnvironmentWrapper> getWrapper();
 
+  void setRAM(size_t memory_index, byte_t value);
+
  private:
   /** This applies an action exactly one time step. Helper function to act(). */
   reward_t oneStepAct(Action player_a_action, Action player_b_action);
